@@ -14,3 +14,10 @@ frontend/dist/
 frontend/coverage/
 .DS_Store
 *.zip
+
+# Local SQLite databases and temporary sidecar files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
