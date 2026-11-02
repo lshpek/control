@@ -183,7 +183,6 @@ class UserProfileRead(Schema):
     roles: list[str]
     permissions: dict[str, str]
     customer_id: int | None
-    telegram_user_id: str | None = None
     is_owner: bool
     must_change_password: bool
     last_login_at: datetime | None
@@ -194,7 +193,6 @@ class AdminUserRead(Schema):
     roles: list[str]
     permissions: dict[str, str]
     customer_id: int | None
-    telegram_user_id: str | None = None
     is_active: bool
     is_owner: bool
     must_change_password: bool
@@ -386,67 +384,3 @@ class PortalMessageRead(Schema):
     author_username: str | None
     body: str
     created_at: datetime
-
-
-class PortalOrderDecision(Schema):
-    action: Literal["approve_proposal", "request_info", "accept_delivery", "request_changes"]
-    comment: str | None = Field(None, max_length=2000)
-
-class OrderChangeRequestCreate(Schema):
-    title: str = Field(min_length=2, max_length=180)
-    scope_delta: str = Field(min_length=1, max_length=10000)
-    amount_delta: Decimal | None = Field(None, max_digits=12, decimal_places=2)
-    new_delivery_date: date | None = None
-
-class OrderChangeRequestDecision(Schema):
-    status: Literal["approved", "rejected"]
-    decision_note: str | None = Field(None, max_length=2000)
-
-class OrderChangeRequestRead(Schema):
-    id: int
-    order_id: int
-    title: str
-    scope_delta: str
-    amount_delta: str | None
-    new_delivery_date: date | None
-    status: str
-    decision_note: str | None
-    created_at: datetime
-    decided_at: datetime | None
-
-class OrderPaymentCreate(Schema):
-    kind: Literal["payment", "expense"] = "payment"
-    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
-    currency: str = Field("RUB", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
-    status: Literal["planned", "paid", "cancelled"] = "planned"
-    note: str | None = Field(None, max_length=1000)
-
-class OrderPaymentUpdate(Schema):
-    status: Literal["planned", "paid", "cancelled"]
-    note: str | None = Field(None, max_length=1000)
-
-class OrderPaymentRead(Schema):
-    id: int
-    order_id: int
-    kind: str
-    amount: str
-    currency: str
-    status: str
-    paid_at: datetime | None
-    note: str | None
-    created_at: datetime
-
-class OrderPaymentSummaryRead(Schema):
-    items: list[OrderPaymentRead]
-    paid_amount: str
-    planned_amount: str
-    expenses_amount: str
-    balance_due: str
-    currency: str
-
-class PortalPaymentSummaryRead(Schema):
-    items: list[OrderPaymentRead]
-    paid_amount: str
-    planned_amount: str
-    balance_due: str
-    currency: str

@@ -18,6 +18,10 @@ class Settings:
     database_url = os.getenv("DATABASE_URL", "sqlite:///./backend/botvex.db")
     cors_origins = [x.strip() for x in os.getenv("CORS_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173").split(",") if x.strip()]
     telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    telegram_alert_chat_id = os.getenv("TELEGRAM_ALERT_CHAT_ID", "").strip()
+    service_monitor_enabled = _bool("SERVICE_MONITOR_ENABLED", True)
+    service_monitor_poll_seconds = int(os.getenv("SERVICE_MONITOR_POLL_SECONDS", "30"))
+    service_monitor_timeout_seconds = float(os.getenv("SERVICE_MONITOR_TIMEOUT_SECONDS", "5"))
     telegram_init_data_max_age_seconds = int(os.getenv("TELEGRAM_INIT_DATA_MAX_AGE_SECONDS", "3600"))
     session_cookie_name = os.getenv("SESSION_COOKIE_NAME", "botvex_session").strip() or "botvex_session"
     session_ttl_seconds = int(os.getenv("SESSION_TTL_SECONDS", "28800"))
@@ -42,5 +46,11 @@ class Settings:
             raise RuntimeError("LOGIN_WINDOW_SECONDS должен быть в диапазоне 60..3600.")
         if not 1 <= self.login_max_per_identity <= 20 or not 1 <= self.login_max_per_ip <= 100:
             raise RuntimeError("Лимиты попыток входа находятся вне допустимого диапазона.")
+        if not 15 <= self.service_monitor_poll_seconds <= 3600:
+            raise RuntimeError("SERVICE_MONITOR_POLL_SECONDS должен быть в диапазоне 15..3600.")
+        if not 1.0 <= self.service_monitor_timeout_seconds <= 20.0:
+            raise RuntimeError("SERVICE_MONITOR_TIMEOUT_SECONDS должен быть в диапазоне 1..20.")
+        if self.telegram_alert_chat_id and not self.telegram_alert_chat_id.lstrip("-").isdigit():
+            raise RuntimeError("TELEGRAM_ALERT_CHAT_ID должен быть числовым Telegram chat ID.")
 
 settings = Settings()

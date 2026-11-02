@@ -1,4 +1,5 @@
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
@@ -18,23 +19,22 @@ from .database import get_db
 from .errors import install_error_handlers
 from .orders import orders_router, portal_router
 from .schemas import ActivityRead, SettingRead, SettingsUpdate
-
-
-import logging
-
-logger = logging.getLogger("botvex.core")
-
-
-def get_startup_banner() -> str:
-    mode = "local_dev" if settings.local_dev_mode else "prod"
-    return f"[BOTVEX-CORE] CONTROL CENTER INITIALIZED | MODE={mode} | DB=SQLITE_WAL | RBAC=STRICT_SCOPE | ORIGIN_GUARD=ACTIVE"
+from .service_monitor import service_monitor_loop
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings.validate()
-    logger.info(get_startup_banner())
-    yield
+    monitor_task = None
+    if settings.service_monitor_enabled:
+        monitor_task = asyncio.create_task(service_monitor_loop(), name="botvex-service-monitor")
+    try:
+        yield
+    finally:
+        if monitor_task is not None:
+            monitor_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await monitor_task
 
 
 app = FastAPI(
@@ -83,7 +83,6 @@ def health(db: Session = Depends(get_db)):
         "version": settings.app_version,
         "database": db_status,
         "auth_mode": "account_session" if settings.telegram_bot_token else "account_session_only",
-        "startup_banner": get_startup_banner(),
     }
 
 

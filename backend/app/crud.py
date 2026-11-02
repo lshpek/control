@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from .access_scopes import ensure_related_scope, scope_query
 from .auth import AccessContext, require_permission
 from .database import get_db
-from .models import ActivityEvent, Client, DeploymentRecord, LogEntry, Project, ProjectAssignment, Service, Task, TestRun, TestSuite, utcnow
+from .models import ActivityEvent, Client, DeploymentRecord, LogEntry, Project, ProjectAssignment, Service, Task, TestRun, TestSuite
 from .schemas import (
     ClientCreate, ClientRead, ClientUpdate,
     DeploymentCreate, DeploymentRead, DeploymentUpdate,
@@ -88,7 +88,7 @@ def build_crud_router(path: str, entity_type: str, model, create_schema, update_
             raise HTTPException(status_code=403, detail="Создание проектов доступно только роли с полным доступом")
         obj = model(**data)
         if model is Task and data.get("status") == "done":
-            obj.completed_at = utcnow()
+            obj.completed_at = datetime.utcnow()
         db.add(obj)
         db.flush()
         actor = access.user.username if access.user else "owner"
@@ -132,7 +132,7 @@ def build_crud_router(path: str, entity_type: str, model, create_schema, update_
         for key, value in changes.items():
             setattr(obj, key, value)
         if model is Task and changes.get("status") == "done" and obj.completed_at is None:
-            obj.completed_at = utcnow()
+            obj.completed_at = datetime.utcnow()
         elif model is Task and changes.get("status") and changes["status"] != "done":
             obj.completed_at = None
         actor = access.user.username if access.user else "owner"
@@ -250,89 +250,3 @@ def record_run(suite_id: int, payload: TestRunCreate, access: AccessContext = De
     db.commit()
     db.refresh(run)
     return run
-
-
-import ipaddress
-import socket
-from urllib.parse import urlsplit
-import httpx
-
-
-def validate_public_probe_url(url: str) -> str:
-    parsed = urlsplit(url.strip())
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
-        raise HTTPException(status_code=422, detail="Разрешены только абсолютные URL http/https без учётных данных")
-    hostname = parsed.hostname.strip()
-    port = parsed.port or (443 if parsed.scheme == "https" else 80)
-    try:
-        literal_ip = ipaddress.ip_address(hostname)
-        resolved_ips = [literal_ip]
-    except ValueError:
-        try:
-            infos = socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
-        except OSError as exc:
-            raise HTTPException(status_code=422, detail="Не удалось разрешить DNS-имя проверяемого узла") from exc
-        resolved_ips = []
-        for info in infos:
-            sockaddr = info[4]
-            if sockaddr and sockaddr[0]:
-                try:
-                    resolved_ips.append(ipaddress.ip_address(sockaddr[0]))
-                except ValueError:
-                    continue
-    if not resolved_ips:
-        raise HTTPException(status_code=422, detail="Не удалось определить IP-адрес узла")
-    for ip in resolved_ips:
-        if (
-            not ip.is_global
-            or ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_multicast
-            or ip.is_reserved
-            or ip.is_unspecified
-        ):
-            raise HTTPException(
-                status_code=422,
-                detail="Проверка внутренних, локальных и зарезервированных сетевых адресов запрещена политикой безопасности (SSRF guard)",
-            )
-    return url.strip()
-
-
-@services_router.post("/{service_id}/probe", response_model=ServiceRead)
-def probe_service_health(
-    service_id: int,
-    access: AccessContext = Depends(require_permission("services:edit")),
-    db: Session = Depends(get_db),
-):
-    service = db.scalar(scope_query(select(Service), Service, access, db).where(Service.id == service_id))
-    if service is None or service.is_archived:
-        raise HTTPException(status_code=404, detail="Запись не найдена")
-    target = (service.health_endpoint or service.url or "").strip()
-    if not target:
-        raise HTTPException(status_code=422, detail="Для сервиса не задан health_endpoint или URL")
-    safe_url = validate_public_probe_url(target)
-    try:
-        response = httpx.get(
-            safe_url,
-            timeout=3.0,
-            follow_redirects=False,
-            headers={"User-Agent": "BOTVEX-Control-Center-Probe/0.1"},
-        )
-        if 200 <= response.status_code < 400:
-            service.status = "healthy"
-        elif 400 <= response.status_code < 500:
-            service.status = "degraded"
-        else:
-            service.status = "down"
-        summary_detail = f"HTTP {response.status_code}"
-    except httpx.HTTPError:
-        service.status = "down"
-        summary_detail = "ошибка соединения / таймаут"
-    service.status_source = "probe"
-    service.last_checked_at = utcnow()
-    actor = access.user.username if access.user else "owner"
-    audit(db, "service", service.id, "probed", f"Проверка узла «{service.name}»: {service.status} ({summary_detail})", actor)
-    db.commit()
-    db.refresh(service)
-    return service

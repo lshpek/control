@@ -10,7 +10,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from .auth import (
-    AccessContext, _effective_permission_scope, clear_session_cookie, create_session, get_current_user,
+    AccessContext, clear_session_cookie, create_session, get_current_user,
     effective_permissions, hash_password, password_hasher, require_permission, set_session_cookie,
     token_digest, verify_password,
 )
@@ -43,7 +43,6 @@ def _profile(user: User) -> dict:
         "roles": sorted(role.slug for role in user.roles if role.is_active),
         "permissions": effective_permissions(user),
         "customer_id": user.customer_id,
-        "telegram_user_id": user.telegram_user_id,
         "is_owner": user.is_owner,
         "must_change_password": user.must_change_password,
         "last_login_at": user.last_login_at,
@@ -70,6 +69,7 @@ def _login_hash(value: str) -> str:
 
 def _check_login_rate_limit(db: Session, ip_hash: str, username_hash: str, now) -> None:
     cutoff = now - timedelta(seconds=settings.login_window_seconds)
+    db.execute(delete(LoginAttempt).where(LoginAttempt.attempted_at < now - timedelta(days=1)))
     same_identity = db.scalar(select(func.count(LoginAttempt.id)).where(
         LoginAttempt.ip_hash == ip_hash,
         LoginAttempt.username_hash == username_hash,
@@ -79,12 +79,12 @@ def _check_login_rate_limit(db: Session, ip_hash: str, username_hash: str, now) 
         LoginAttempt.ip_hash == ip_hash,
         LoginAttempt.attempted_at >= cutoff,
     )) or 0
-    if same_identity >= settings.login_max_per_identity or (same_ip >= settings.login_max_per_ip and same_identity >= 1):
-        raise HTTPException(status_code=429, detail="Превышен лимит попыток аутентификации. Повторите запрос позже.")
+    if same_identity >= settings.login_max_per_identity or same_ip >= settings.login_max_per_ip:
+        db.commit()
+        raise HTTPException(status_code=429, detail="Слишком много попыток входа. Попробуй позже.")
 
 
 def _record_failed_login(db: Session, user: User | None, ip_hash: str, username_hash: str, now) -> None:
-    db.execute(delete(LoginAttempt).where(LoginAttempt.attempted_at < now - timedelta(days=1)))
     db.add(LoginAttempt(ip_hash=ip_hash, username_hash=username_hash, attempted_at=now))
     if user is not None:
         user.failed_login_attempts += 1
@@ -343,9 +343,6 @@ def update_user(
     if user.is_owner:
         if changes.get("is_active") is False or "role_slugs" in changes or ("customer_id" in changes and changes["customer_id"] is not None):
             raise HTTPException(status_code=403, detail="Защищённый аккаунт владельца нельзя отключить или лишить роли через этот интерфейс")
-    if "is_active" in changes and changes["is_active"] is not None and changes["is_active"] != user.is_active:
-        if not owner.is_owner and (owner.user is None or _effective_permission_scope(owner.user, "admin:users:suspend") is None):
-            raise HTTPException(status_code=403, detail="Отключение и активация аккаунтов требуют права admin:users:suspend")
     if changes.get("is_active") is False:
         if owner.user and owner.user.id == user.id:
             raise HTTPException(status_code=422, detail="Нельзя отключить собственный активный сеанс; используй отдельный аккаунт владельца")

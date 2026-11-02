@@ -55,16 +55,3 @@ body,.app-shell{background:var(--telegram-bg-color,var(--app-background));color:
 .archived-toggle{white-space:nowrap;cursor:pointer}.admin-order-main-button{display:flex;flex-direction:column;gap:7px;min-width:0;width:100%;border:0;padding:0;background:transparent;color:inherit;text-align:left;cursor:pointer}.admin-order-main-button:disabled{cursor:default;opacity:.86}.order-card-archived{opacity:.88}.order-card-archived .order-status{filter:saturate(.65)}
 
 .session-manager-body{padding:18px 22px 4px;overflow:auto}.session-list{display:flex;flex-direction:column;gap:10px}.session-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:13px;border:1px solid #303746;border-radius:10px;background:#12151c}.session-row-main{display:flex;flex-direction:column;gap:5px;min-width:0}.session-row-main strong{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:#e4e7ee;font-size:12px}.session-row-main p,.session-row-main small{margin:0;color:#9ba2b2;font-size:10px;overflow-wrap:anywhere}.session-row-main .badge{align-self:flex-start;margin-top:4px}.session-manager .modal-footer{padding:0 22px 18px;margin-top:18px}.session-manager .field-error{margin:0 0 12px}@media(max-width:760px){.session-manager-body{padding:14px 16px 4px}.session-row{gap:10px;padding:10px}.session-row>.secondary-button{font-size:9px;padding:8px}.session-manager .modal-footer{padding:0 16px max(16px,env(safe-area-inset-bottom))}}
-
-/* Enterprise Telemetry Banner and Kanban View */
-.telemetry-banner{display:flex;align-items:center;gap:9px;padding:9px 14px;margin-bottom:20px;border:1px solid #283a36;border-radius:9px;background:#121b1a;color:#9cd8be;font-size:9px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}
-.telemetry-banner svg{color:#7ee0ad;flex-shrink:0}
-.kanban-board{display:grid;grid-template-columns:repeat(5,minmax(220px,1fr));gap:12px;padding:16px;overflow-x:auto}
-.kanban-column{display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid #292e3b;border-radius:11px;background:#12151e;min-height:260px}
-.kanban-column-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid #262b37;font-size:11px;color:#d8dde8}
-.kanban-cards{display:flex;flex-direction:column;gap:9px}
-.kanban-card{display:flex;flex-direction:column;gap:7px;padding:11px;border:1px solid #2e3444;border-radius:9px;background:#181c27}
-.kanban-card strong{font-size:11px;color:#eaedf4;line-height:1.4}
-.kanban-card small{font-size:9px;color:#8992a5}
-.kanban-card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px}
-.kanban-card-foot select{border:1px solid #353c4d;border-radius:6px;background:#10131b;color:#cfd5e2;font-size:9px;padding:4px 6px}

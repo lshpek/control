@@ -247,8 +247,6 @@ class Order(Base):
     created_by: Mapped[User | None] = relationship()
     events: Mapped[list["OrderEvent"]] = relationship(back_populates="order", cascade="all, delete-orphan", order_by="OrderEvent.created_at")
     messages: Mapped[list["OrderMessage"]] = relationship(back_populates="order", cascade="all, delete-orphan", order_by="OrderMessage.created_at")
-    change_requests: Mapped[list["OrderChangeRequest"]] = relationship(back_populates="order", cascade="all, delete-orphan", order_by="OrderChangeRequest.created_at")
-    payments: Mapped[list["OrderPayment"]] = relationship(back_populates="order", cascade="all, delete-orphan", order_by="OrderPayment.created_at")
 
 class OrderEvent(Base):
     __tablename__ = "order_events"
@@ -274,38 +272,3 @@ class OrderMessage(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False, index=True)
     order: Mapped[Order] = relationship(back_populates="messages")
     author: Mapped[User | None] = relationship()
-
-
-class OrderChangeRequest(Base):
-    __tablename__ = "order_change_requests"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
-    title: Mapped[str] = mapped_column(String(180), nullable=False)
-    scope_delta: Mapped[str] = mapped_column(Text, nullable=False)
-    amount_delta: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
-    new_delivery_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    status: Mapped[str] = mapped_column(String(24), default="pending", nullable=False, index=True)
-    decision_note: Mapped[str | None] = mapped_column(String(2000), nullable=True)
-    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    decided_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False, index=True)
-    decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    order: Mapped[Order] = relationship(back_populates="change_requests")
-    created_by: Mapped[User | None] = relationship(foreign_keys=[created_by_user_id])
-    decided_by: Mapped[User | None] = relationship(foreign_keys=[decided_by_user_id])
-
-
-class OrderPayment(Base):
-    __tablename__ = "order_payments"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
-    kind: Mapped[str] = mapped_column(String(24), default="payment", nullable=False, index=True)
-    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), default="RUB", nullable=False)
-    status: Mapped[str] = mapped_column(String(24), default="planned", nullable=False, index=True)
-    paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    note: Mapped[str | None] = mapped_column(String(1000), nullable=True)
-    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False, index=True)
-    order: Mapped[Order] = relationship(back_populates="payments")
-    created_by: Mapped[User | None] = relationship(foreign_keys=[created_by_user_id])

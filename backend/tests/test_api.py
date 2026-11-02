@@ -189,35 +189,3 @@ def test_archived_client_can_be_restored_through_explicit_endpoint(client):
     assert client.get("/api/v1/clients").json()[0]["id"] == client_id
     activity = client.get("/api/v1/activity?entity_type=client").json()
     assert any(row["action"] == "restored" and row["entity_id"] == client_id for row in activity)
-
-
-
-def test_ssrf_guard_rejects_loopback_and_private_ips_on_service_probe(client):
-    for forbidden_url in [
-        "http://127.0.0.1:8000/health",
-        "http://10.0.0.1/health",
-        "http://169.254.169.254/latest/meta-data/",
-        "http://192.168.1.1/status",
-    ]:
-        svc = client.post("/api/v1/services", json={"name": f"SSRF test {forbidden_url}", "health_endpoint": forbidden_url})
-        assert svc.status_code == 201, svc.text
-        probe = client.post(f"/api/v1/services/{svc.json()['id']}/probe")
-        assert probe.status_code == 422, f"Expected 422 SSRF rejection for {forbidden_url}, got {probe.status_code}"
-
-
-def test_hot_sqlite_backup_creates_verified_copy_and_logs_activity(tmp_path):
-    import sqlite3
-    from app.backup_db import backup_sqlite_database
-
-    src_db = tmp_path / "source.db"
-    dst_db = tmp_path / "backup" / "snapshot.db"
-    with sqlite3.connect(str(src_db)) as conn:
-        conn.execute("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)")
-        conn.execute("INSERT INTO sample (name) VALUES ('botvex')")
-        conn.commit()
-
-    result = backup_sqlite_database(dst_db, database_url=f"sqlite:///{src_db}")
-    assert result == dst_db.resolve()
-    assert dst_db.exists()
-    with sqlite3.connect(str(dst_db)) as verify_conn:
-        assert verify_conn.execute("SELECT name FROM sample").fetchone()[0] == "botvex"

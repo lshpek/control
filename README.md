@@ -13,11 +13,12 @@ BOTVEX Control Center is a single-business workspace for managing client records
 - A client portal for an explicitly linked client account. It lists only that client's non-draft, non-archived orders and exposes only customer-visible fields, events, and messages.
 - Official Telegram Web Apps SDK integration. Telegram login is available only when raw, signed `initData` is valid and the Telegram user ID is explicitly linked to an existing local account. Opening the Mini App does not create an account or grant access automatically.
 - Existing CRUD sections for clients, projects, tasks, services, log entries, manual test runs and manual deployment records. Manual records are not represented as automated verification.
+- Background public HTTP service monitoring with SSRF-safe URL validation, service status history, and Telegram alerts on failures and recovery.
 - Bounded list query parameters, selected-resource scoping, date-only formatting helpers, a read-only settings GET endpoint, and a GitHub Actions quality workflow definition.
 
 ## Known limitations
 
-This repository is **not production-ready** yet. Quotes and immutable quote revisions, payment ledger/provider verification, formal change requests and customer approvals, secure attachments/file exchange, external notification delivery, real service-monitoring checks and incidents, a notification center, full CRM lead conversion/follow-up workflow, and automated backup execution are not implemented. The customer portal currently supports orders and customer-visible messages/events, not attachments or payment actions. GitHub Actions has been configured in source, but a successful run must be observed after the workflow is published. Frontend dependencies do not currently have a committed `package-lock.json`, so installation is not yet fully reproducible.
+This repository is **not production-ready** yet. Quotes and immutable quote revisions, payment ledger/provider verification, formal change requests and customer approvals, secure attachments/file exchange, notification workflows beyond service-monitoring Telegram alerts, full incident-management workflows, a notification center, full CRM lead conversion/follow-up workflow, and automated backup execution are not implemented. The customer portal currently supports orders and customer-visible messages/events, not attachments or payment actions. GitHub Actions has been configured in source, but a successful run must be observed after the workflow is published. Frontend dependencies do not currently have a committed `package-lock.json`, so installation is not yet fully reproducible.
 
 ## Requirements
 
@@ -164,5 +165,8 @@ The workflow `.github/workflows/quality.yml` checks backend tests on Python 3.11
 - Test runs and deployment records entered through existing sections are manual records, not automated CI/deployment proof.
 - No real health-check monitor, incident worker, notification delivery, payment-provider connection, file storage integration, AI API connection or production deploy is included.
 - Before any public release, complete a separate security review, set production HTTPS/origin/cookie configuration, verify account recovery and backups, run frontend checks and actual responsive/browser/Telegram E2E tests, and review the hosting/storage model.
-#   c o n t r o l  
- 
+
+
+## Automated service monitoring and Telegram alerts
+
+See [`docs/telegram-service-monitoring.md`](docs/telegram-service-monitoring.md). Configure `TELEGRAM_ALERT_CHAT_ID` and the local-only `TELEGRAM_BOT_TOKEN`, set a public `health_endpoint` or `url` on each service, and restart the backend. Status is persisted and alerts are deduplicated to status transitions.
